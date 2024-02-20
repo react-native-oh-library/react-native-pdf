@@ -161,7 +161,7 @@ export default class Pdf extends Component {
         let uri = source.uri || '';
         // first set to initial state
         if (this._mounted) {
-            this.setState({isDownloaded: false, path: '', progress: 0});
+            this.setState({ isDownloaded: false, path: '', progress: 0 });
         }
         const filename = source.cacheFileName || SHA1(uri) + '.pdf';
         console.log('=== _loadFromSource uri: ' + uri);
@@ -340,28 +340,28 @@ export default class Pdf extends Component {
     }
 
     setNativeProps = nativeProps => {
-        if (this._root){
+        if (this._root) {
             this._root.setNativeProps(nativeProps);
         }
     };
 
-    setPage( pageNumber ) {
-        if ( (pageNumber === null) || (isNaN(pageNumber)) ) {
+    setPage(pageNumber) {
+        if ((pageNumber === null) || (isNaN(pageNumber))) {
             throw new Error('Specified pageNumber is not a number');
         }
-        if (!!global?.nativeFabricUIManager ) {
+        if (!!global?.nativeFabricUIManager) {
             if (this._root) {
                 PdfViewCommands.setNativePage(
                     this._root,
                     pageNumber,
                 );
             }
-          } else {
+        } else {
             this.setNativeProps({
                 page: pageNumber
             });
-          }
-        
+        }
+
     }
 
     _onChange = (event) => {
@@ -375,15 +375,15 @@ export default class Pdf extends Component {
             if (message[0] === 'loadComplete') {
                 let tableContents;
                 try {
-                    tableContents = message[4]&&JSON.parse(message[4]);
-                } catch(e) {
+                    tableContents = message[4] && JSON.parse(message[4]);
+                } catch (e) {
                     tableContents = message[4];
                 }
                 this.props.onLoadComplete && this.props.onLoadComplete(Number(message[1]), this.state.path, {
                     width: Number(message[2]),
                     height: Number(message[3]),
                 },
-                tableContents
+                    tableContents
                 );
             } else if (message[0] === 'pageChanged') {
                 this.props.onPageChanged && this.props.onPageChanged(Number(message[1]), Number(message[2]));
@@ -450,23 +450,23 @@ export default class Pdf extends Component {
                         )}
                 </View>);
         } else if (Platform.OS === "harmony") {
-            console.log("===react-native-pdf path: " + this.state.path);
-            return (<View>
-                <RNPDFPdfView {...this.props} path={this.state.path}  style={{ width: "100%", height: "100%" }}  />
-            </View>);
+            console.log("===react-native-pdf style: " + JSON.stringify(this.props.style));
+            return (
+            <View style={{...this.props.style,  overflow: 'hidden' }}>
+                <RNPDFPdfView {...this.props} path={this.state.path}   />
+            </View>
+            );
         } else {
             return (null);
         }
-
-
     }
 }
 
 if (Platform.OS === "android" || Platform.OS === "ios") {
     var PdfCustom = PdfViewNativeComponent;
-}  else if (Platform.OS === "windows") {
+} else if (Platform.OS === "windows") {
     var PdfCustom = requireNativeComponent('RCTPdf', Pdf, {
-        nativeOnly: {path: true, onChange: true},
+        nativeOnly: { path: true, onChange: true },
     })
 }
 
