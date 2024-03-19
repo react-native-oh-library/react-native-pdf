@@ -25,6 +25,7 @@
 import { Descriptor, ComponentBuilderContext, ViewBaseProps, Tag } from 'rnoh';
 import { RNComponentFactory, RNOHContext, RNViewBase } from 'rnoh';
 import web_webview from '@ohos.web.webview';
+import Logger from '../../Logger';
 
 export const PDF_VIEW_TYPE: string = "RTNPdfView"
 
@@ -59,13 +60,13 @@ export struct RTNPdfView {
   private unregisterDescriptorChangesListener?: () => void = undefined;
   private cleanupCommandCallback?: () => void = undefined;
   @State pageIndex: number = 1;
-  @State source:Resource|undefined = undefined;
+  @State source: Resource | undefined = undefined;
 
   @Builder
   emptyBuild(ctx: ComponentBuilderContext) {
   }
 
-  updateSource(){
+  updateSource() {
     let src = this.descriptor.props.path;
     if (src!.startsWith('asset://')) {
       this.source = $rawfile(src!.replace("asset://", "assets/"));
@@ -85,20 +86,64 @@ export struct RTNPdfView {
     this.cleanupCommandCallback = this.ctx.componentCommandReceiver.registerCommandCallback(
       this.tag,
       (command, args: (boolean | number)[]) => {
-        console.log(`[RNOH]: CommandCallback,command: ${command}`)
-        console.log(`[RNOH]: CommandCallback,selectedPage: ${args[0]}`)
-        this.pageIndex = args[0] as number
+        Logger.info(`[RNOH]: HarmonyOS does not support,command:  ${command}, arg: ${args[0]}`);
+        this.pageIndex = args[0] as number;
       });
   }
 
   aboutToDisappear() {
     this.cleanupCommandCallback?.();
-    this.unregisterDescriptorChangesListener?.()
+    this.unregisterDescriptorChangesListener?.();
+    this.webviewController.removeCache(true);
+  }
+
+  loadComplete(numberOfPages: number) {
+    Logger.info("[RNOH]:enter loadComplete");
+    this.ctx.rnInstance.emitComponentEvent(
+      this.descriptor.tag,
+      PDF_VIEW_TYPE,
+      {
+        message: 'loadComplete|' + numberOfPages + '|' + this.width + '|' + this.height
+      }
+    );
+  }
+
+  onPageChanged(page: number, numberOfPages: number) {
+    Logger.info("[RNOH]:enter pageChanged");
+    this.ctx.rnInstance.emitComponentEvent(
+      this.descriptor.tag,
+      PDF_VIEW_TYPE,
+      {
+        message: 'pageChanged|' + page + '|' + numberOfPages
+      }
+    );
+  }
+
+  onScaleChanged() {
+    Logger.info("[RNOH]:enter scaleChanged");
+    this.ctx.rnInstance.emitComponentEvent(
+      this.descriptor.tag,
+      PDF_VIEW_TYPE,
+      {
+        message: 'scaleChanged|' + this.scale
+      }
+    );
+  }
+
+  onChange() {
+    Logger.info("[RNOH]:onChange not support");
+    this.ctx.rnInstance.emitComponentEvent(
+      this.descriptor.tag,
+      PDF_VIEW_TYPE,
+      {
+        message: 'onProgressChange'
+      }
+    );
   }
 
   build() {
     RNViewBase({ ctx: this.ctx, tag: this.tag }) {
-      if (this.descriptor.props.path){
+      if (this.descriptor.props.path) {
         Web({ src: this.source ? this.source : this.descriptor.props.path, controller: this.webviewController })
           .domStorageAccess(true)
           .javaScriptAccess(true)
