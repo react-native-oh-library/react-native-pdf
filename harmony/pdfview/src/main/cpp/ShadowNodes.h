@@ -25,7 +25,6 @@
 #pragma once
 
 #include "EventEmitters.h"
-#include "Props.h"
 #include "States.h"
 #include <react/renderer/components/view/ConcreteViewShadowNode.h>
 #include <jsi/jsi.h>
@@ -40,7 +39,7 @@ JSI_EXPORT extern const char RNPDFPdfViewComponentName[];
  */
 using RNPDFPdfViewShadowNode = ConcreteViewShadowNode<
     RNPDFPdfViewComponentName,
-    RNPDFPdfViewProps,
+    ViewProps,
     RNPDFPdfViewEventEmitter,
     RNPDFPdfViewState>;
 

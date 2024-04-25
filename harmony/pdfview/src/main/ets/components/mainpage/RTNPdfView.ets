@@ -22,14 +22,16 @@
  * SOFTWARE.
  */
 
-import { Descriptor, ComponentBuilderContext, ViewBaseProps, Tag } from 'rnoh';
-import { RNComponentFactory, RNOHContext, RNViewBase } from 'rnoh';
+import { Descriptor, ComponentBuilderContext, ViewRawProps, ViewBaseProps } from '@rnoh/react-native-openharmony';
+import { RNOHContext, RNViewBase } from '@rnoh/react-native-openharmony';
 import web_webview from '@ohos.web.webview';
 import Logger from '../../Logger';
 
-export const PDF_VIEW_TYPE: string = "RTNPdfView"
+export const PDF_VIEW_TYPE: string = "RTNPdfView";
 
-export interface PdfViewProps extends ViewBaseProps {
+export interface PdfViewState {}
+
+export interface PdfViewRawProps extends ViewRawProps {
   path?: string,
   page?: number,
   scale?: number,
@@ -46,9 +48,9 @@ export interface PdfViewProps extends ViewBaseProps {
   spacing?: number,
   password?: string,
   singlePage?: boolean,
-};
+}
 
-export type PdfViewDescriptor = Descriptor<'RTNPdfView', PdfViewProps>
+export type PdfViewDescriptor = Descriptor<'RTNPdfView', ViewBaseProps, PdfViewState, PdfViewRawProps>
 
 @Component
 export struct RTNPdfView {
@@ -56,7 +58,7 @@ export struct RTNPdfView {
   ctx!: RNOHContext
   tag: number = 0
   @BuilderParam buildCustomComponent: (componentBuilderContext: ComponentBuilderContext) => void = this.emptyBuild;
-  @State descriptor: PdfViewDescriptor = {} as PdfViewDescriptor;
+  @State descriptor: PdfViewDescriptor = Object() as PdfViewDescriptor;
   private unregisterDescriptorChangesListener?: () => void = undefined;
   private cleanupCommandCallback?: () => void = undefined;
   @State pageIndex: number = 1;
@@ -67,7 +69,7 @@ export struct RTNPdfView {
   }
 
   updateSource() {
-    let src = this.descriptor.props.path;
+    let src = this.descriptor.rawProps.path;
     if (src!.startsWith('asset://')) {
       this.source = $rawfile(src!.replace("asset://", "assets/"));
     }
@@ -143,8 +145,8 @@ export struct RTNPdfView {
 
   build() {
     RNViewBase({ ctx: this.ctx, tag: this.tag }) {
-      if (this.descriptor.props.path) {
-        Web({ src: this.source ? this.source : this.descriptor.props.path, controller: this.webviewController })
+      if (this.descriptor.rawProps.path) {
+        Web({ src: this.source ? this.source : this.descriptor.rawProps.path, controller: this.webviewController })
           .domStorageAccess(true)
           .javaScriptAccess(true)
           .width('100%')
