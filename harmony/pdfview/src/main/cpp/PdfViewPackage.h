@@ -28,7 +28,6 @@
 #include "RNOH/Package.h"
 #include "ComponentDescriptors.h"
 #include "PdfViewJSIBinder.h"
-#include "PdfViewNapiBinder.h"
 #include "PdfEventEmitRequestHandler.h"
 
 namespace rnoh {
@@ -41,11 +40,7 @@ namespace rnoh {
             return {facebook::react::concreteComponentDescriptorProvider<
                 facebook::react::RNPDFPdfViewComponentDescriptor>()};
         }
-
-        ComponentNapiBinderByString createComponentNapiBinderByName() override {
-            return {{"RTNPdfView", std::make_shared<PdfViewNapiBinder>()}};
-        }
-
+    
         ComponentJSIBinderByString createComponentJSIBinderByName() override {
             return {{"RTNPdfView", std::make_shared<PdfViewJSIBinder>()}};
         }
