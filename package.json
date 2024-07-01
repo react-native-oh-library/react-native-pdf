@@ -15,8 +15,6 @@
     "keywords": [
         "react-component",
         "react-native",
-        "android",
-        "ios",
         "pdf",
         "view",
         "viewer"
@@ -46,8 +44,6 @@
         "react-native-blob-util": ">=0.13.7"
     },
     "files": [
-        "android/",
-        "ios/",
         "harmony",
         "windows/",
         "DoubleTapView.js",
@@ -61,13 +57,5 @@
         "PinchZoomView.js",
         "react-native-pdf.podspec",
         "fabric/"
-    ],
-    "codegenConfig": {
-        "name": "rnpdf",
-        "type": "components",
-        "jsSrcsDir": "./fabric",
-        "android": {
-          "javaPackageName": "org.wonday.pdf"
-        }
-      }
+    ]
 }
