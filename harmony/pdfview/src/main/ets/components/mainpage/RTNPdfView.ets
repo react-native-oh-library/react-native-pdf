@@ -59,10 +59,11 @@ export struct RTNPdfView {
   tag: number = 0
   @BuilderParam buildCustomComponent: (componentBuilderContext: ComponentBuilderContext) => void = this.emptyBuild;
   @State descriptor: PdfViewDescriptor = Object() as PdfViewDescriptor;
-  private unregisterDescriptorChangesListener?: () => void = undefined;
-  private cleanupCommandCallback?: () => void = undefined;
   @State pageIndex: number = 1;
   @State source: Resource | undefined = undefined;
+  @State controllerStatus: boolean = false;
+  private unregisterDescriptorChangesListener?: () => void = undefined;
+  private cleanupCommandCallback?: () => void = undefined;
 
   @Builder
   emptyBuild(ctx: ComponentBuilderContext) {
@@ -96,7 +97,9 @@ export struct RTNPdfView {
   aboutToDisappear() {
     this.cleanupCommandCallback?.();
     this.unregisterDescriptorChangesListener?.();
-    this.webviewController.removeCache(true);
+    if (this.controllerStatus) {
+      this.webviewController.removeCache(true);
+    }
   }
 
   loadComplete(numberOfPages: number) {
@@ -151,6 +154,9 @@ export struct RTNPdfView {
           .javaScriptAccess(true)
           .width('100%')
           .height('100%')
+          .onControllerAttached(() => {
+            this.controllerStatus = true
+          })
       }
     }
   }
