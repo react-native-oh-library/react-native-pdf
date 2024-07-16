@@ -146,10 +146,17 @@ export struct RTNPdfView {
     );
   }
 
+  private getSrc(): string {
+    if (this.source) {
+      return `${this.source}#toolbar=0&navpanes=0`;
+    }
+    return `${this.descriptor.rawProps.path}#toolbar=0&navpanes=0`;
+  }
+
   build() {
     RNViewBase({ ctx: this.ctx, tag: this.tag }) {
       if (this.descriptor.rawProps.path) {
-        Web({ src: this.source ? this.source : this.descriptor.rawProps.path, controller: this.webviewController })
+        Web({ src: this.getSrc(), controller: this.webviewController })
           .domStorageAccess(true)
           .javaScriptAccess(true)
           .width('100%')
