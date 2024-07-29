@@ -26,7 +26,7 @@ import { Descriptor, ComponentBuilderContext, ViewRawProps, ViewBaseProps } from
 import { RNOHContext, RNViewBase } from '@rnoh/react-native-openharmony';
 import web_webview from '@ohos.web.webview';
 import Logger from '../../Logger';
-
+import {ASSET, HIDE_TOOLBAR, HTTP, HTTPS, LOAD_COMPLETE, ON_PROGRESS_CHANGE, PAGE_CHANGE, SCALE_CHANGED,}from './types'
 export const PDF_VIEW_TYPE: string = "RTNPdfView";
 
 export interface PdfViewState {}
@@ -71,8 +71,8 @@ export struct RTNPdfView {
 
   updateSource() {
     let src = this.descriptor.rawProps.path;
-    if (src!.startsWith('asset://')) {
-      this.source = $rawfile(src!.replace("asset://", "assets/"));
+    if (src!.startsWith(`${ASSET}://`)) {
+      this.source = $rawfile(src!.replace(`${ASSET}://`, `${ASSET}/`));
     }
   }
 
@@ -108,7 +108,7 @@ export struct RTNPdfView {
       this.descriptor.tag,
       PDF_VIEW_TYPE,
       {
-        message: 'loadComplete|' + numberOfPages + '|' + this.width + '|' + this.height
+        message: `${LOAD_COMPLETE}|${numberOfPages}|${this.width}|${this.height}`
       }
     );
   }
@@ -119,7 +119,7 @@ export struct RTNPdfView {
       this.descriptor.tag,
       PDF_VIEW_TYPE,
       {
-        message: 'pageChanged|' + page + '|' + numberOfPages
+        message:`${PAGE_CHANGE}|${page}|${numberOfPages}`
       }
     );
   }
@@ -130,7 +130,7 @@ export struct RTNPdfView {
       this.descriptor.tag,
       PDF_VIEW_TYPE,
       {
-        message: 'scaleChanged|' + this.scale
+        message: `${SCALE_CHANGED}|${this.scale}`
       }
     );
   }
@@ -141,16 +141,24 @@ export struct RTNPdfView {
       this.descriptor.tag,
       PDF_VIEW_TYPE,
       {
-        message: 'onProgressChange'
+        message: ON_PROGRESS_CHANGE
       }
     );
   }
 
   private getSrc(): string {
     if (this.source) {
-      return `${this.source}#toolbar=0&navpanes=0`;
+      return this.isHttpUrl(`${this.source}`) ? `${this.source}${HIDE_TOOLBAR}` : `${this.source}`
     }
-    return `${this.descriptor.rawProps.path}#toolbar=0&navpanes=0`;
+    return this.isHttpUrl(`${this.descriptor.rawProps.path}`) ?
+      `${this.descriptor.rawProps.path}${HIDE_TOOLBAR}` : `${this.descriptor.rawProps.path}`
+  }
+
+  private isHttpUrl(url: string | undefined): boolean {
+    if (url) {
+      return [HTTP, HTTPS].some((item: string) => url.startsWith(item))
+    }
+    return false
   }
 
   build() {
