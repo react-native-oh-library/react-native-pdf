@@ -24,9 +24,18 @@
 
 import { Descriptor, ComponentBuilderContext, ViewRawProps, ViewBaseProps } from '@rnoh/react-native-openharmony';
 import { RNOHContext, RNViewBase } from '@rnoh/react-native-openharmony';
-import web_webview from '@ohos.web.webview';
 import Logger from '../../Logger';
-import {ASSET, HIDE_TOOLBAR, HTTP, HTTPS, LOAD_COMPLETE, ON_PROGRESS_CHANGE, PAGE_CHANGE, SCALE_CHANGED,}from './types'
+
+import { PDFController, PDFView } from 'PDFView';
+import { pdfService } from '@kit.PDFKit';
+import { BusinessError } from '@kit.BasicServicesKit';
+import common from '@ohos.app.ability.common';
+import fs from '@ohos.file.fs';
+import request from '@ohos.request';
+import buffer from '@ohos.buffer';
+import cryptoFramework from '@ohos.security.cryptoFramework';
+import { LOAD_COMPLETE, ON_PROGRESS_CHANGE, PAGE_CHANGE, SCALE_CHANGED } from './types'
+
 export const PDF_VIEW_TYPE: string = "RTNPdfView";
 
 export interface PdfViewState {}
@@ -52,9 +61,11 @@ export interface PdfViewRawProps extends ViewRawProps {
 
 export type PdfViewDescriptor = Descriptor<'RTNPdfView', ViewBaseProps, PdfViewState, PdfViewRawProps>
 
+let context = getContext(this) as common.UIAbilityContext;
+let filesDir = context.filesDir;
+
 @Component
 export struct RTNPdfView {
-  webviewController: web_webview.WebviewController = new web_webview.WebviewController();
   ctx!: RNOHContext
   tag: number = 0
   @BuilderParam buildCustomComponent: (componentBuilderContext: ComponentBuilderContext) => void = this.emptyBuild;
@@ -64,15 +75,111 @@ export struct RTNPdfView {
   @State controllerStatus: boolean = false;
   private unregisterDescriptorChangesListener?: () => void = undefined;
   private cleanupCommandCallback?: () => void = undefined;
+  private pdfController: PDFController = new PDFController();
 
   @Builder
   emptyBuild(ctx: ComponentBuilderContext) {
   }
 
-  updateSource() {
-    let src = this.descriptor.rawProps.path;
-    if (src!.startsWith(`${ASSET}://`)) {
-      this.source = $rawfile(src!.replace(`${ASSET}://`, `${ASSET}/`));
+  async doLoadHttpDocument(path: string): Promise<void> {
+    try {
+      const filePath: string = await this.downloadHttpFile(path);
+      this.doLoadLocalDocument(filePath);
+    } catch (e) {
+      Logger.error(`[RTNPdfView]: fs accessSync: ${e}`);
+    }
+  }
+
+  doLoadLocalDocument(filePath: string): void {
+    if (filePath) {
+      this.pdfController.loadDocument(filePath)
+        .then((res: pdfService.ParseResult) => {
+          if (res === 0) {
+            Logger.info(`[RTNPdfView]: loadDocument success`);
+          }
+        })
+        .catch((e: Error) => {
+          Logger.error(`[RTNPdfView]: loadDocument error: ${e.message}`);
+        })
+        .finally(() => {
+          fs.unlink(filePath).then(() => {
+            Logger.info(`[RTNPdfView]: tempFile deleted`);
+          })
+        })
+    }
+  }
+
+  async downloadHttpFile(url: string): Promise<string> {
+    const hashFileName: string = await this.processFileName(url);
+    const fullFileName: string = filesDir + "/" + hashFileName + '.pdf';
+    return new Promise((resolve, reject) => {
+      // 获取应用文件路径
+      try {
+        Logger.info(`[RTNPdfView]: start downloadFile`);
+        request.downloadFile(context, {
+          url: url,
+          filePath: fullFileName
+        }).then((downloadTask: request.DownloadTask) => {
+          downloadTask.on('complete', () => {
+            Logger.info(`[RTNPdfView]: finish downloadFile`);
+            resolve(fullFileName);
+          })
+        }).catch((err: BusinessError) => {
+          reject("downloadFile failed" + err.message);
+        });
+      } catch (error) {
+        let err: BusinessError = error as BusinessError;
+        reject("downloadFile failed" + err.message);
+      }
+    });
+  }
+
+  async processFileName(originalURL: string): Promise<string> {
+    return new Promise(async (resolve, reject) => {
+      let mdAlgName = 'SHA256'; // 摘要算法名
+      let md = cryptoFramework.createMd(mdAlgName);
+      try {
+        await md.update({ data: new Uint8Array(buffer.from(originalURL, 'utf-8').buffer) });
+        let mdResult: cryptoFramework.DataBlob = await md.digest();
+        const fileName: string = buffer.from(mdResult.data).toString('hex');
+        Logger.info(`[RTNPdfView]: fileName: ${fileName}`);
+        resolve(fileName);
+      } catch (e) {
+        reject("processFileName error");
+      }
+    });
+  }
+
+  async sendToSandBox(assetPath: string): Promise<string> {
+    assetPath = assetPath!.replace("asset://", "assets/");
+    Logger.info(`[RTNPdfView]: load pdf assetPath: ${assetPath}`);
+    const newFileName: string = await this.processFileName(assetPath);
+
+    // 需将pdf文档复制到沙箱路径下
+    let context = getContext() as common.UIAbilityContext;
+    let content = context.resourceManager.getRawFileContentSync(`${assetPath}`); //pdf_reference
+    let dir = context.filesDir
+    let fileFullPath = dir + '/' + newFileName + '.pdf';
+
+    Logger.info(`[RTNPdfView]: load pdf filePath: ${fileFullPath}`);
+    let res = fs.accessSync(fileFullPath);
+    Logger.info(`[RTNPdfView]: fs accessSync: ${res}`);
+
+    let fdSand = fs.openSync(fileFullPath, fs.OpenMode.WRITE_ONLY | fs.OpenMode.CREATE | fs.OpenMode.TRUNC);
+    fs.writeSync(fdSand.fd, content.buffer);
+    fs.closeSync(fdSand.fd);
+    return fileFullPath;
+  }
+
+  async updateSource() {
+    let src: string | undefined = this.descriptor.rawProps.path;
+    if (src) {
+      if (src!.startsWith('asset://')) { // 适配require('../assets/test.pdf')
+        const fileFullPath: string = await this.sendToSandBox(src);
+        this.doLoadLocalDocument(fileFullPath);
+      } else if (src!.startsWith('http://') || src!.startsWith('https://')) {
+        this.doLoadHttpDocument(src); // 适配加载在线文件
+      }
     }
   }
 
@@ -97,9 +204,6 @@ export struct RTNPdfView {
   aboutToDisappear() {
     this.cleanupCommandCallback?.();
     this.unregisterDescriptorChangesListener?.();
-    if (this.controllerStatus) {
-      this.webviewController.removeCache(true);
-    }
   }
 
   loadComplete(numberOfPages: number) {
@@ -119,7 +223,7 @@ export struct RTNPdfView {
       this.descriptor.tag,
       PDF_VIEW_TYPE,
       {
-        message:`${PAGE_CHANGE}|${page}|${numberOfPages}`
+        message: `${PAGE_CHANGE}|${page}|${numberOfPages}`
       }
     );
   }
@@ -146,32 +250,17 @@ export struct RTNPdfView {
     );
   }
 
-  private getSrc(): string {
-    if (this.source) {
-      return this.isHttpUrl(`${this.source}`) ? `${this.source}${HIDE_TOOLBAR}` : `${this.source}`
-    }
-    return this.isHttpUrl(`${this.descriptor.rawProps.path}`) ?
-      `${this.descriptor.rawProps.path}${HIDE_TOOLBAR}` : `${this.descriptor.rawProps.path}`
-  }
-
-  private isHttpUrl(url: string | undefined): boolean {
-    if (url) {
-      return [HTTP, HTTPS].some((item: string) => url.startsWith(item))
-    }
-    return false
-  }
-
   build() {
     RNViewBase({ ctx: this.ctx, tag: this.tag }) {
       if (this.descriptor.rawProps.path) {
-        Web({ src: this.getSrc(), controller: this.webviewController })
-          .domStorageAccess(true)
-          .javaScriptAccess(true)
-          .width('100%')
-          .height('100%')
-          .onControllerAttached(() => {
-            this.controllerStatus = true
-          })
+        PDFView(
+          {
+            controller: this.pdfController,
+            pageLayout: pdfService.PageLayout.LAYOUT_SINGLE,
+            isContinuous: true,
+            pageFit: pdfService.PageFit.FIT_WIDTH
+          }
+        )
       }
     }
   }

@@ -6,6 +6,7 @@
   "author": "",
   "license": "Apache-2.0",
   "dependencies": {
-    "@rnoh/react-native-openharmony": 'file:../react_native_openharmony'
+    "@rnoh/react-native-openharmony": 'file:../react_native_openharmony',
+    "PDFView": "file:./lib/PDFView.har"
   }
 }
