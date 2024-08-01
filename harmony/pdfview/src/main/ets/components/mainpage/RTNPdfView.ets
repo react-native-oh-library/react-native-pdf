@@ -90,7 +90,7 @@ export struct RTNPdfView {
     }
   }
 
-  doLoadLocalDocument(filePath: string): void {
+  doLoadLocalDocument(filePath: string, isDelOriginFile: boolean = true): void {
     if (filePath) {
       this.pdfController.loadDocument(filePath)
         .then((res: pdfService.ParseResult) => {
@@ -102,9 +102,12 @@ export struct RTNPdfView {
           Logger.error(`[RTNPdfView]: loadDocument error: ${e.message}`);
         })
         .finally(() => {
-          fs.unlink(filePath).then(() => {
-            Logger.info(`[RTNPdfView]: tempFile deleted`);
-          })
+          Logger.info(`[RTNPdfView]: isDelOriginFile is : ${isDelOriginFile}`)
+          if (isDelOriginFile) {
+            fs.unlink(filePath).then(() => {
+              Logger.info(`[RTNPdfView]: originFile deleted`);
+            })
+          }
         })
     }
   }
@@ -173,12 +176,17 @@ export struct RTNPdfView {
 
   async updateSource() {
     let src: string | undefined = this.descriptor.rawProps.path;
+    Logger.info(`[RTNPdfView]: src is ${src}`);
     if (src) {
-      if (src!.startsWith('asset://')) { // 适配require('../assets/test.pdf')
-        const fileFullPath: string = await this.sendToSandBox(src);
-        this.doLoadLocalDocument(fileFullPath);
-      } else if (src!.startsWith('http://') || src!.startsWith('https://')) {
+      if (src!.startsWith('http://') || src!.startsWith('https://')) {
         this.doLoadHttpDocument(src); // 适配加载在线文件
+      } else {
+        let isDeleteOriginFile: boolean = false;
+        if (src!.startsWith('asset://')) { // 适配require('../assets/test.pdf')
+          src = await this.sendToSandBox(src);
+          isDeleteOriginFile = true;
+        }
+        this.doLoadLocalDocument(src, isDeleteOriginFile); // 适配本地其他目录，比如cache
       }
     }
   }
