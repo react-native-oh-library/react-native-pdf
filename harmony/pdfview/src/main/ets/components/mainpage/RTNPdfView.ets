@@ -82,24 +82,36 @@ export struct RTNPdfView {
   }
 
   async doLoadHttpDocument(path: string): Promise<void> {
+    Logger.info(`[RTNPdfView]: doLoadHttpDocument, path is ${path}`)
     try {
       const filePath: string = await this.downloadHttpFile(path);
+      Logger.info(`[RTNPdfView]: doLoadHttpDocument, filePath is ${filePath}`)
       this.doLoadLocalDocument(filePath);
     } catch (e) {
       Logger.error(`[RTNPdfView]: fs accessSync: ${e}`);
+      this.onError(`[RTNPdfView]: fs accessSync: ${e}`);
     }
   }
 
   doLoadLocalDocument(filePath: string, isDelOriginFile: boolean = true): void {
+    Logger.info(`[RTNPdfView]: doLoadLocalDocument, filePath is ${filePath}, isDelOriginFile is ${isDelOriginFile}`)
+    const progressCallBack: (progress: number) => number = (progress: number) => {
+      Logger.info(`[RTNPdfView]: proress is ${(progress / 100).toFixed(2)}`);
+      this.loadProgress(Number((progress / 100).toFixed(2)))
+      return 0
+    };
+
     if (filePath) {
-      this.pdfController.loadDocument(filePath)
+      this.pdfController.loadDocument(filePath, undefined, undefined, progressCallBack)
         .then((res: pdfService.ParseResult) => {
           if (res === 0) {
             Logger.info(`[RTNPdfView]: loadDocument success`);
+            this.loadComplete(this.pdfController.getPageCount(), filePath);
           }
         })
         .catch((e: Error) => {
           Logger.error(`[RTNPdfView]: loadDocument error: ${e.message}`);
+          this.onError(e.message)
         })
         .finally(() => {
           Logger.info(`[RTNPdfView]: isDelOriginFile is : ${isDelOriginFile}`)
@@ -115,6 +127,9 @@ export struct RTNPdfView {
   async downloadHttpFile(url: string): Promise<string> {
     const hashFileName: string = await this.processFileName(url);
     const fullFileName: string = filesDir + "/" + hashFileName + '.pdf';
+    if (fs.accessSync(fullFileName)) {
+      fs.unlinkSync(fullFileName);
+    }
     return new Promise((resolve, reject) => {
       // 获取应用文件路径
       try {
@@ -128,10 +143,14 @@ export struct RTNPdfView {
             resolve(fullFileName);
           })
         }).catch((err: BusinessError) => {
+          Logger.info(`[RTNPdfView]: error downloadHttpFile`);
+          this.onError(err.message)
           reject("downloadFile failed" + err.message);
         });
       } catch (error) {
+        Logger.info(`[RTNPdfView]: error downloadHttpFile`);
         let err: BusinessError = error as BusinessError;
+        this.onError(err.message)
         reject("downloadFile failed" + err.message);
       }
     });
@@ -148,6 +167,7 @@ export struct RTNPdfView {
         Logger.info(`[RTNPdfView]: fileName: ${fileName}`);
         resolve(fileName);
       } catch (e) {
+        this.onError(e.message)
         reject("processFileName error");
       }
     });
@@ -214,13 +234,40 @@ export struct RTNPdfView {
     this.unregisterDescriptorChangesListener?.();
   }
 
-  loadComplete(numberOfPages: number) {
+  loadComplete(numberOfPages: number, filePath: string) {
     Logger.info("[RNOH]:enter loadComplete");
+
+    // 获取页面宽度、高度
     this.ctx.rnInstance.emitComponentEvent(
       this.descriptor.tag,
       PDF_VIEW_TYPE,
       {
-        message: `${LOAD_COMPLETE}|${numberOfPages}|${this.width}|${this.height}`
+        type: 'onChange',
+        message: `loadComplete|${numberOfPages}|100|100`
+      }
+    );
+  }
+
+  loadProgress(percent: number) {
+    Logger.info("[RNOH]:enter loadProgress");
+    this.ctx.rnInstance.emitComponentEvent(
+      this.descriptor.tag,
+      PDF_VIEW_TYPE,
+      {
+        type: 'onChange',
+        message: `loadProgress|${percent}`
+      }
+    );
+  }
+
+  onError(message: string) {
+    Logger.info("[RNOH]:enter---onError");
+    this.ctx.rnInstance.emitComponentEvent(
+      this.descriptor.tag,
+      PDF_VIEW_TYPE,
+      {
+        type: 'onChange',
+        message: `error|${message}`
       }
     );
   }
@@ -242,7 +289,8 @@ export struct RTNPdfView {
       this.descriptor.tag,
       PDF_VIEW_TYPE,
       {
-        message: `${SCALE_CHANGED}|${this.scale}`
+        type: 'onScaleChanged',
+        scale: 1
       }
     );
   }

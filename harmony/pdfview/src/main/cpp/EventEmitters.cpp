@@ -35,5 +35,36 @@ void RNPDFPdfViewEventEmitter::onChange(OnChange event) const {
   });
 }
 
+void RNPDFPdfViewEventEmitter::onScaleChanged(OnScaleChanged event) const {
+  dispatchEvent("scaleChanged", [event=std::move(event)](jsi::Runtime &runtime) {
+    auto payload = jsi::Object(runtime);
+    payload.setProperty(runtime, "scale", event.scale);
+    return payload;
+  });
+}
+
+void RNPDFPdfViewEventEmitter::onLoadComplete(OnLoadValue event) const {
+  dispatchEvent("loadComplete", [event=std::move(event)](jsi::Runtime &runtime) {
+    auto payload = jsi::Object(runtime);
+    payload.setProperty(runtime, "scale", event.scale);
+    return payload;
+  });
+}
+
+void RNPDFPdfViewEventEmitter::onLoadProgress(OnProgressValue event) const {
+  dispatchEvent("loadProgress", [event=std::move(event)](jsi::Runtime &runtime) {
+    auto payload = jsi::Object(runtime);
+    payload.setProperty(runtime, "percent", event.percent);
+    return payload;
+  });
+}
+
+void RNPDFPdfViewEventEmitter::onError(OnErrorValue event) const {
+  dispatchEvent("error", [event=std::move(event)](jsi::Runtime &runtime) {
+    auto payload = jsi::Object(runtime);
+    payload.setProperty(runtime, "message", event.message);
+    return payload;
+  });
+}
 } // namespace react
 } // namespace facebook
