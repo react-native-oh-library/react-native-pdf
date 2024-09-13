@@ -31,14 +31,35 @@ namespace facebook {
 namespace react {
 
 class JSI_EXPORT RNPDFPdfViewEventEmitter : public ViewEventEmitter {
- public:
-  using ViewEventEmitter::ViewEventEmitter;
+public:
+    using ViewEventEmitter::ViewEventEmitter;
 
-  struct OnChange {
-      std::string message;
+    struct OnChange {
+        std::string message;
     };
 
-  void onChange(OnChange value) const;
+    void onChange(OnChange value) const;
+
+    struct OnScaleChanged {
+        Float scale;
+    };
+
+    void onScaleChanged(OnScaleChanged value) const;
+
+    struct OnLoadValue {
+        Float scale;
+    };
+    void onLoadComplete(OnLoadValue value) const;
+
+    struct OnProgressValue {
+        Float percent;
+    };
+    void onLoadProgress(OnProgressValue value) const;
+
+    struct OnErrorValue {
+        std::string message;
+    };
+    void onError(OnErrorValue value) const;
 };
 
 } // namespace react
