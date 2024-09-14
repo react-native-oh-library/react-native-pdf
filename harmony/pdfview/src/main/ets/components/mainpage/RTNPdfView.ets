@@ -94,6 +94,12 @@ export struct RTNPdfView {
   }
 
   doLoadLocalDocument(filePath: string, isDelOriginFile: boolean = true): void {
+    let initPageIndex: number | undefined = this.descriptor.rawProps.page;
+    let spacing: number | undefined = this.descriptor.rawProps.spacing;
+    let scale: number | undefined = this.descriptor.rawProps.scale;
+    let minScale: number | undefined = this.descriptor.rawProps.minScale;
+    let maxScale: number | undefined = this.descriptor.rawProps.maxScale;
+
     Logger.info(`[RTNPdfView]: doLoadLocalDocument, filePath is ${filePath}, isDelOriginFile is ${isDelOriginFile}`)
     const progressCallBack: (progress: number) => number = (progress: number) => {
       Logger.info(`[RTNPdfView]: proress is ${(progress / 100).toFixed(2)}`);
@@ -102,11 +108,32 @@ export struct RTNPdfView {
     };
 
     if (filePath) {
-      this.pdfController.loadDocument(filePath, undefined, undefined, progressCallBack)
+      this.pdfController.loadDocument(filePath, undefined, initPageIndex, progressCallBack)
         .then((res: pdfService.ParseResult) => {
           if (res === 0) {
+            this.pdfController.setPageSpacing(spacing, spacing); //由于rn侧值传递一个参数，故此处默认为连续滚动模式。设置上下面的间距。
+            this.pdfController.setPageZoom(scale);
+            const pageCount = this.pdfController.getPageCount();
+
+            //注册监听器
+            let tempScale: number | undefined = scale;
+            this.pdfController.registerScaleChangedListener((currentScale: number) => {
+              if (tempScale !== currentScale) {
+                if (typeof maxScale === 'number' && currentScale > maxScale) {
+                  this.pdfController.setPageZoom(maxScale)
+                } else if (typeof minScale === 'number' && currentScale < minScale) {
+                  this.pdfController.setPageZoom(minScale)
+                }
+                tempScale = currentScale;
+              }
+              this.onScaleChanged(currentScale)
+            });
+            this.pdfController.registerPageChangedListener((pageIndex: number) => {
+              this.onPageChanged(pageIndex, pageCount);
+            });
+
             Logger.info(`[RTNPdfView]: loadDocument success`);
-            this.loadComplete(this.pdfController.getPageCount(), filePath);
+            this.loadComplete(pageCount, filePath,);
           }
         })
         .catch((e: Error) => {
@@ -167,7 +194,7 @@ export struct RTNPdfView {
         Logger.info(`[RTNPdfView]: fileName: ${fileName}`);
         resolve(fileName);
       } catch (e) {
-        this.onError(e.message)
+        this.onError(e.message);
         reject("processFileName error");
       }
     });
@@ -260,14 +287,14 @@ export struct RTNPdfView {
     );
   }
 
-  onError(message: string) {
-    Logger.info("[RNOH]:enter---onError");
+  onError(e: string) {
+    Logger.info("[RNOH]:enter onError");
     this.ctx.rnInstance.emitComponentEvent(
       this.descriptor.tag,
       PDF_VIEW_TYPE,
       {
         type: 'onChange',
-        message: `error|${message}`
+        message: `error|${e}`
       }
     );
   }
@@ -278,19 +305,20 @@ export struct RTNPdfView {
       this.descriptor.tag,
       PDF_VIEW_TYPE,
       {
-        message: `${PAGE_CHANGE}|${page}|${numberOfPages}`
+        type: 'onChange',
+        message: `pageChanged|${page}|${numberOfPages}`
       }
     );
   }
 
-  onScaleChanged() {
+  onScaleChanged(currentScale: number) {
     Logger.info("[RNOH]:enter scaleChanged");
     this.ctx.rnInstance.emitComponentEvent(
       this.descriptor.tag,
       PDF_VIEW_TYPE,
       {
-        type: 'onScaleChanged',
-        scale: 1
+        type: 'onChange',
+        message: `scaleChanged|${currentScale}`
       }
     );
   }
@@ -301,6 +329,7 @@ export struct RTNPdfView {
       this.descriptor.tag,
       PDF_VIEW_TYPE,
       {
+        type: 'onChange',
         message: ON_PROGRESS_CHANGE
       }
     );

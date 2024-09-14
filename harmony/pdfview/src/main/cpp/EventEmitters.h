@@ -40,26 +40,7 @@ public:
 
     void onChange(OnChange value) const;
 
-    struct OnScaleChanged {
-        Float scale;
-    };
 
-    void onScaleChanged(OnScaleChanged value) const;
-
-    struct OnLoadValue {
-        Float scale;
-    };
-    void onLoadComplete(OnLoadValue value) const;
-
-    struct OnProgressValue {
-        Float percent;
-    };
-    void onLoadProgress(OnProgressValue value) const;
-
-    struct OnErrorValue {
-        std::string message;
-    };
-    void onError(OnErrorValue value) const;
 };
 
 } // namespace react
