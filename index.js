@@ -432,7 +432,7 @@ export default class Pdf extends Component {
         } else if (Platform.OS === "harmony") {
             console.log("===react-native-pdf style: " + JSON.stringify(this.props.style));
             return (
-            <View style={{...this.props.style,  overflow: 'hidden' }}>
+            <View style={[{ overflow: 'hidden' }, this.props.style]}>
                 <RNPDFPdfView {...this.props} path={this.state.path} onChange={this._onChange}  />
             </View>
             );
