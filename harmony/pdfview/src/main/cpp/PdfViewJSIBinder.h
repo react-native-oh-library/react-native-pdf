@@ -50,6 +50,18 @@ namespace rnoh {
             object.setProperty(rt, "singlePage", "boolean");
             return object;
         }
+    
+        facebook::jsi::Object createBubblingEventTypes(facebook::jsi::Runtime &rt) override
+        {
+            return facebook::jsi::Object(rt);
+        }
+    
+        facebook::jsi::Object createDirectEventTypes(facebook::jsi::Runtime &rt) override
+        {
+            facebook::jsi::Object events(rt);
+            events.setProperty(rt, "topChange", createDirectEvent(rt, "onChange"));
+            return events;
+        }
     };
 } // namespace rnoh
 
