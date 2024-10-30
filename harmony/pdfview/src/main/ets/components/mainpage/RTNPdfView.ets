@@ -24,16 +24,16 @@
 
 import { Descriptor, ComponentBuilderContext, ViewRawProps, ViewBaseProps } from '@rnoh/react-native-openharmony';
 import { RNOHContext, RNViewBase } from '@rnoh/react-native-openharmony';
-import Logger from '../../Logger';
-import { PDFController, PDFView } from 'PDFView';
-import { pdfService, pdfViewManager } from '@kit.PDFKit';
 import { BusinessError } from '@kit.BasicServicesKit';
-import common from '@ohos.app.ability.common';
 import fs from '@ohos.file.fs';
 import request from '@ohos.request';
 import buffer from '@ohos.buffer';
 import cryptoFramework from '@ohos.security.cryptoFramework';
+import { webview } from '@kit.ArkWeb';
+import { pdfService, pdfViewManager, PdfView } from '@kit.PDFKit'
+import { common } from '@kit.AbilityKit';
 import { ON_PROGRESS_CHANGE } from './types';
+import Logger from '../../Logger';
 
 export const PDF_VIEW_TYPE: string = "RTNPdfView";
 
@@ -60,9 +60,6 @@ export interface PdfViewRawProps extends ViewRawProps {
 
 export type PdfViewDescriptor = Descriptor<'RTNPdfView', ViewBaseProps, PdfViewState, PdfViewRawProps>
 
-let context = getContext(this) as common.UIAbilityContext;
-let filesDir = context.filesDir;
-
 @Component
 export struct RTNPdfView {
   ctx!: RNOHContext;
@@ -74,8 +71,8 @@ export struct RTNPdfView {
   @State controllerStatus: boolean = false;
   private unregisterDescriptorChangesListener?: () => void = undefined;
   private cleanupCommandCallback?: () => void = undefined;
-  private pdfController: PDFController = new PDFController();
-
+  private pdfController: pdfViewManager.PdfController = new pdfViewManager.PdfController();
+  controller: webview.WebviewController = new webview.WebviewController();
   @Builder
   emptyBuild(ctx: ComponentBuilderContext) {
   }
@@ -94,8 +91,8 @@ export struct RTNPdfView {
 
   doLoadLocalDocument(filePath: string, isDelOriginFile: boolean = true): void {
     let initPageIndex: number | undefined = this.descriptor.rawProps.page;
-    let spacing: number | undefined = this.descriptor.rawProps.spacing;
-    let scale: number | undefined = this.descriptor.rawProps.scale;
+    let spacing: number = Number(this.descriptor.rawProps.spacing);
+    let scale: number =  Number(this.descriptor.rawProps.scale);
     let minScale: number | undefined = this.descriptor.rawProps.minScale;
     let maxScale: number | undefined = this.descriptor.rawProps.maxScale;
     let password: string | undefined = this.descriptor.rawProps.password;
@@ -109,6 +106,7 @@ export struct RTNPdfView {
     };
 
     if (filePath) {
+      this.pdfController.releaseDocument();
       this.pdfController.loadDocument(filePath, password, initPageIndex, progressCallBack)
         .then((res: pdfService.ParseResult) => {
           switch (res) {
@@ -184,6 +182,8 @@ export struct RTNPdfView {
   }
 
   async downloadHttpFile(url: string): Promise<string> {
+    let context = getContext(this) as common.UIAbilityContext;
+    let filesDir = context.filesDir;
     const hashFileName: string = await this.processFileName(url);
     const fullFileName: string = filesDir + "/" + hashFileName + '.pdf';
     if (fs.accessSync(fullFileName)) {
@@ -379,7 +379,7 @@ export struct RTNPdfView {
   build() {
     RNViewBase({ ctx: this.ctx, tag: this.tag }) {
       if (this.descriptor.rawProps.path) {
-        PDFView(
+        PdfView(
           {
             controller: this.pdfController,
             pageLayout: pdfService.PageLayout.LAYOUT_SINGLE,
