@@ -203,7 +203,7 @@ export default class Pdf extends Component {
 
                 const filename = source.cacheFileName || SHA1(uri) + '.pdf';
                 console.log('=== _prepareFile filename: ' + filename);
-                // const cacheFile = ReactNativeBlobUtil.fs.dirs.CacheDir + '/' + filename;
+                const cacheFile = ''
 
                 // delete old cache file
                 this._unlinkFile(cacheFile);
@@ -211,30 +211,8 @@ export default class Pdf extends Component {
                 if (isNetwork) {
                     this._downloadFile(source, cacheFile);
                 } else if (isAsset) {
-                    // ReactNativeBlobUtil.fs
-                    //     .cp(uri, cacheFile)
-                    //     .then(() => {
-                    //         if (this._mounted) {
-                    //             this.setState({ path: cacheFile, isDownloaded: true, progress: 1 });
-                    //         }
-                    //     })
-                    //     .catch(async (error) => {
-                    //         this._unlinkFile(cacheFile);
-                    //         this._onError(error);
-                    //     })
                 } else if (isBase64) {
                     let data = uri.replace(/data:application\/pdf;base64,/i, '');
-                    // ReactNativeBlobUtil.fs
-                    //     .writeFile(cacheFile, data, 'base64')
-                    //     .then(() => {
-                    //         if (this._mounted) {
-                    //             this.setState({ path: cacheFile, isDownloaded: true, progress: 1 });
-                    //         }
-                    //     })
-                    //     .catch(async (error) => {
-                    //         this._unlinkFile(cacheFile);
-                    //         this._onError(error)
-                    //     });
                 } else {
                     if (this._mounted) {
                        this.setState({
@@ -385,6 +363,8 @@ export default class Pdf extends Component {
                 },
                     tableContents
                 );
+            } else if (message[0] === 'loadProgress') {
+                this.props.onLoadProgress && this.props.onLoadProgress(Number(message[1]));
             } else if (message[0] === 'pageChanged') {
                 this.props.onPageChanged && this.props.onPageChanged(Number(message[1]), Number(message[2]));
             } else if (message[0] === 'error') {
@@ -452,8 +432,8 @@ export default class Pdf extends Component {
         } else if (Platform.OS === "harmony") {
             console.log("===react-native-pdf style: " + JSON.stringify(this.props.style));
             return (
-            <View style={{...this.props.style,  overflow: 'hidden' }}>
-                <RNPDFPdfView {...this.props} path={this.state.path}   />
+            <View style={[{ overflow: 'hidden' }, this.props.style]}>
+                <RNPDFPdfView {...this.props} path={this.state.path} onChange={this._onChange}  />
             </View>
             );
         } else {
