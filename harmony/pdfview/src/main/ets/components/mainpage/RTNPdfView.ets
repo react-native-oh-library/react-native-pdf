@@ -29,7 +29,6 @@ import fs from '@ohos.file.fs';
 import request from '@ohos.request';
 import buffer from '@ohos.buffer';
 import cryptoFramework from '@ohos.security.cryptoFramework';
-import { webview } from '@kit.ArkWeb';
 import { pdfService, pdfViewManager, PdfView } from '@kit.PDFKit'
 import { common } from '@kit.AbilityKit';
 import { ON_PROGRESS_CHANGE } from './types';
@@ -39,7 +38,17 @@ export const PDF_VIEW_TYPE: string = "RTNPdfView";
 
 export interface PdfViewState {}
 
+interface Source {
+  uri: string;
+  headers?: Object;
+  cache?: boolean;
+  cacheFileName?: string;
+  expiration?: number;
+  method?: string;
+};
+
 export interface PdfViewRawProps extends ViewRawProps {
+  source: Source,
   path?: string,
   page?: number,
   scale?: number,
@@ -67,12 +76,11 @@ export struct RTNPdfView {
   @BuilderParam buildCustomComponent: (componentBuilderContext: ComponentBuilderContext) => void = this.emptyBuild;
   @State descriptor: PdfViewDescriptor = Object() as PdfViewDescriptor;
   @State pageIndex: number = 1;
-  @State source: Resource | undefined = undefined;
   @State controllerStatus: boolean = false;
   private unregisterDescriptorChangesListener?: () => void = undefined;
   private cleanupCommandCallback?: () => void = undefined;
   private pdfController: pdfViewManager.PdfController = new pdfViewManager.PdfController();
-  controller: webview.WebviewController = new webview.WebviewController();
+
   @Builder
   emptyBuild(ctx: ComponentBuilderContext) {
   }
@@ -195,7 +203,8 @@ export struct RTNPdfView {
         Logger.info(`[RTNPdfView]: start downloadFile`);
         request.downloadFile(context, {
           url: url,
-          filePath: fullFileName
+          filePath: fullFileName,
+          header: this.descriptor.rawProps.source.headers,
         }).then((downloadTask: request.DownloadTask) => {
           downloadTask.on('complete', () => {
             Logger.info(`[RTNPdfView]: finish downloadFile`);

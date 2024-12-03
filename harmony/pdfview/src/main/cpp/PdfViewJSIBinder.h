@@ -32,6 +32,7 @@ namespace rnoh {
     class PdfViewJSIBinder : public ViewComponentJSIBinder {
         facebook::jsi::Object createNativeProps(facebook::jsi::Runtime &rt) override {
             auto object = ViewComponentJSIBinder::createNativeProps(rt);
+            object.setProperty(rt, "source", "Source");
             object.setProperty(rt, "path", "string");
             object.setProperty(rt, "page", "int");
             object.setProperty(rt, "scale", "float");

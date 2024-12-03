@@ -37,7 +37,7 @@ class JSI_EXPORT RNPDFPdfViewProps final : public ViewProps {
   RNPDFPdfViewProps(const PropsParserContext& context, const RNPDFPdfViewProps &sourceProps, const RawProps &rawProps);
 
 #pragma mark - Props
-
+  folly::dynamic source{};
   std::string path{};
   int page{0};
   Float scale{0.0};

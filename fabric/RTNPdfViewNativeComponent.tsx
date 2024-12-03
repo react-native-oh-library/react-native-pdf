@@ -8,7 +8,19 @@ type ChangeEvent = {
   message: string,
 };
 
+type Source = {
+  uri: string;
+  headers?: {
+      [key: string]: string;
+  };
+  cache?: boolean;
+  cacheFileName?: string;
+  expiration?: number;
+  method?: string;
+};
+
 export interface NativeProps extends ViewProps {
+  source: Source,
   path?: string,
   page?: Int32,
   scale?: Float,
