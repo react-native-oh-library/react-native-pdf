@@ -34,6 +34,7 @@ RNPDFPdfViewProps::RNPDFPdfViewProps(
     const RNPDFPdfViewProps &sourceProps,
     const RawProps &rawProps): ViewProps(context, sourceProps, rawProps),
 
+    source(convertRawProp(context, rawProps, "source", sourceProps.source, {})),
     path(convertRawProp(context, rawProps, "path", sourceProps.path, {})),
     page(convertRawProp(context, rawProps, "page", sourceProps.page, {0})),
     scale(convertRawProp(context, rawProps, "scale", sourceProps.scale, {0.0})),
