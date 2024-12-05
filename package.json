@@ -1,13 +1,13 @@
 {
     "name": "@react-native-oh-tpl/react-native-pdf",
-    "version": "6.7.4-0.3.1",
+    "version": "6.7.4-0.3.2",
     "summary": "A react native PDF view component",
     "description": "A react native PDF view component, support ios and android platform",
     "main": "index.js",
     "typings": "./index.d.ts",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/wonday/react-native-pdf.git"
+        "url": "git+https://github.com/react-native-oh-library/react-native-pdf.git"
     },
     "harmony": {
         "alias": "react-native-pdf"
@@ -24,9 +24,9 @@
         "url": "https://github.com/wonday"
     },
     "license": "MIT",
-    "homepage": "https://github.com/wonday/react-native-pdf",
+    "homepage": "https://github.com/react-native-oh-library/react-native-pdf",
     "bugs": {
-        "url": "https://github.com/wonday/react-native-pdf/issues"
+        "url": "https://github.com/react-native-oh-library/react-native-pdf/issues"
     },
     "dependencies": {
         "crypto-js": "4.2.0",
