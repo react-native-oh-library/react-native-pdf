@@ -201,15 +201,26 @@ export struct RTNPdfView {
       // 获取应用文件路径
       try {
         Logger.info(`[RTNPdfView]: start downloadFile`);
-        request.downloadFile(context, {
-          url: url,
-          filePath: fullFileName,
-          header: this.descriptor.rawProps.source.headers,
-        }).then((downloadTask: request.DownloadTask) => {
-          downloadTask.on('complete', () => {
+        const config: request.agent.Config = {
+          action: request.agent.Action.DOWNLOAD,
+          url,
+          method: this.descriptor.rawProps.source.method ?? 'GET',
+          headers: this.descriptor.rawProps.source.headers,
+          saveas: fullFileName,
+          overwrite: true,
+        };
+        request.agent.create(context, config).then((task: request.agent.Task) => {
+          task.on('completed', () => {
             Logger.info(`[RTNPdfView]: finish downloadFile`);
             resolve(fullFileName);
           })
+          task.on('failed', (progress: request.agent.Progress) => {
+            console.info('[RTNPdfView]: downloadFile failed.', JSON.stringify(progress));
+          });
+          task.on('response', (response: request.agent.HttpResponse) => {
+            console.info('[RTNPdfView]: downloadFile response.', JSON.stringify(response));
+          });
+          task.start();
         }).catch((err: BusinessError) => {
           Logger.info(`[RTNPdfView]: error downloadHttpFile`);
           this.onError(err.message);
