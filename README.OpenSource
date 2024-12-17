@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "react-native-pdf",
+        "License": "MIT License",
+        "License File": "https://github.com/wonday/react-native-pdf/blob/master/LICENSE",
+        "Version Number": "6.7.4",
+        "Owner" : "xiafeng@huawei.com",
+        "Upstream URL": "https://github.com/wonday/react-native-pdf",
+        "Description": "A react native PDF view component, support ios and android platform"
+    }
+]
