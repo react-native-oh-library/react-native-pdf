@@ -40,7 +40,7 @@ export interface PdfViewState {}
 
 interface Source {
   uri: string;
-  headers?: Object;
+  headers?: Record<string, Object>;
   cache?: boolean;
   cacheFileName?: string;
   expiration?: number;
@@ -197,6 +197,20 @@ export struct RTNPdfView {
     if (fs.accessSync(fullFileName)) {
       fs.unlinkSync(fullFileName);
     }
+    const res = await this.downloadAction(context, url, fullFileName, {}, 0);
+    Logger.info(`[RTNPdfView]:res: ${res}`);
+    return res;
+  }
+  async downloadAction(
+    context: Context,
+    url: string,
+    fullFileName: string,
+    distHeaders: Record<string, Object>,
+    redirectCount: number = 0,
+  ): Promise<string> {
+    if (redirectCount > 5) {
+      throw new Error("Too many redirects");
+    }
     return new Promise((resolve, reject) => {
       // 获取应用文件路径
       try {
@@ -205,9 +219,10 @@ export struct RTNPdfView {
           action: request.agent.Action.DOWNLOAD,
           url,
           method: this.descriptor.rawProps.source.method ?? 'GET',
-          headers: this.descriptor.rawProps.source.headers,
+          headers: assignHeader(this.descriptor.rawProps.source?.headers || {}, distHeaders|| {}),
           saveas: fullFileName,
           overwrite: true,
+          mode: request.agent.Mode.FOREGROUND
         };
         request.agent.create(context, config).then((task: request.agent.Task) => {
           task.on('completed', () => {
@@ -217,8 +232,24 @@ export struct RTNPdfView {
           task.on('failed', (progress: request.agent.Progress) => {
             console.info('[RTNPdfView]: downloadFile failed.', JSON.stringify(progress));
           });
-          task.on('response', (response: request.agent.HttpResponse) => {
+          task.on('response', async (response: request.agent.HttpResponse) => {
             console.info('[RTNPdfView]: downloadFile response.', JSON.stringify(response));
+            if (response.statusCode > 300 && response.statusCode < 400) {
+              let redirectUrl: string = response.headers.get('location')?.toString() ?? '';
+              let cookie: string = response.headers.get('set-cookie')?.toString() ?? '';
+              task.off('progress');
+              task.off('completed');
+              task.off('response');
+              task.stop();
+              try {
+                const result = await this.downloadAction(context, redirectUrl, fullFileName, { 'cookie': cookie }, redirectCount + 1);
+
+                Logger.info(`[RTNPdfView]:result: ${result} -----count: ${redirectCount}}`);
+                resolve(result)
+              } catch (e) {
+                reject(e);
+              }
+            }
           });
           task.start();
         }).catch((err: BusinessError) => {
@@ -242,7 +273,7 @@ export struct RTNPdfView {
       try {
         await md.update({ data: new Uint8Array(buffer.from(originalURL, 'utf-8').buffer) });
         let mdResult: cryptoFramework.DataBlob = await md.digest();
-        const fileName: string = buffer.from(mdResult.data).toString('hex');
+        const fileName: string = buffer.from(mdResult.data).toString('hex') + new Date().getTime();
         Logger.info(`[RTNPdfView]: fileName: ${fileName}`);
         resolve(fileName);
       } catch (e) {
@@ -410,4 +441,12 @@ export struct RTNPdfView {
       }
     }
   }
+}
+function assignHeader(target: Record<string, Object>, ...source: Record<string, Object>[]): Record<string, Object> {
+  for(let s of source){
+    for(let k of Object.keys(s)){
+      target[k] = Reflect.get(s, k)
+    }
+  }
+  return target
 }
