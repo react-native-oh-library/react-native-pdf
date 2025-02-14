@@ -145,35 +145,35 @@ export struct RTNPdfView {
                   tempScale = currentScale;
                 }
                 this.onScaleChanged(currentScale);
-          });
-          this.pdfController.registerPageChangedListener((pageIndex: number) => {
-            this.onPageChanged((pageIndex + 1), pageCount);
-          });
-          this.pdfController.registerActionClickListener((redirectInfo: pdfViewManager.RedirectInfo) => {
-            this.onPressLink(redirectInfo.content);
-          });
-          this.loadComplete(pageCount, filePath,);
+              });
+              this.pdfController.registerPageChangedListener((pageIndex: number) => {
+                this.onPageChanged((pageIndex + 1), pageCount);
+              });
+              this.pdfController.registerActionClickListener((redirectInfo: pdfViewManager.RedirectInfo) => {
+                this.onPressLink(redirectInfo.content);
+              });
+              this.loadComplete(pageCount, filePath,);
               Logger.debug(`[RTNPdfView]: loadDocument success`);
               break;
             case pdfService.ParseResult.PARSE_ERROR_FILE:
-          this.onError('loadDocument error: PARSE_ERROR_FILE');
-          break;
-        case pdfService.ParseResult.PARSE_ERROR_FORMAT:
-          this.onError('loadDocument error: PARSE_ERROR_FORMAT');
-          break;
-        case pdfService.ParseResult.PARSE_ERROR_PASSWORD:
-          this.onError('loadDocument error: PARSE_ERROR_PASSWORD');
-          break;
-        case pdfService.ParseResult.PARSE_ERROR_HANDLER:
-          this.onError('loadDocument error: PARSE_ERROR_HANDLER');
-          break;
-        case pdfService.ParseResult.PARSE_ERROR_CERT:
-          this.onError('loadDocument error: PARSE_ERROR_CERT');
-          break;
-        default:
-          this.onError('loadDocument error: UNKNOWN');
-          break;
-      }
+              this.onError('loadDocument error: PARSE_ERROR_FILE');
+              break;
+            case pdfService.ParseResult.PARSE_ERROR_FORMAT:
+              this.onError('loadDocument error: PARSE_ERROR_FORMAT');
+              break;
+            case pdfService.ParseResult.PARSE_ERROR_PASSWORD:
+              this.onError('loadDocument error: PARSE_ERROR_PASSWORD');
+              break;
+            case pdfService.ParseResult.PARSE_ERROR_HANDLER:
+              this.onError('loadDocument error: PARSE_ERROR_HANDLER');
+              break;
+            case pdfService.ParseResult.PARSE_ERROR_CERT:
+              this.onError('loadDocument error: PARSE_ERROR_CERT');
+              break;
+            default:
+              this.onError('loadDocument error: UNKNOWN');
+              break;
+          }
         })
         .catch((e: Error) => {
           Logger.error(`[RTNPdfView]: loadDocument error: ${e}`);
