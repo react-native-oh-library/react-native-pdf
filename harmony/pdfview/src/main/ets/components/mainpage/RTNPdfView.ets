@@ -34,12 +34,6 @@ import { common } from '@kit.AbilityKit';
 import { ON_PROGRESS_CHANGE } from './types';
 import Logger from '../../Logger';
 
-const DEFAULT_SCALE = 1;
-
-const DEFAULT_MIN_SCALE: number = 0.1;
-
-const DEFAULT_MAX_SCALE: number = 10;
-
 export const PDF_VIEW_TYPE: string = "RTNPdfView";
 
 export interface PdfViewState {}
@@ -96,95 +90,102 @@ export struct RTNPdfView {
     try {
       const filePath: string = await this.downloadHttpFile(path);
       Logger.debug(`[RTNPdfView]: doLoadHttpDocument, filePath is ${filePath}`);
-      await this.doLoadLocalDocument(filePath);
+      this.doLoadLocalDocument(filePath);
     } catch (e) {
       Logger.error(`[RTNPdfView]: fs accessSync: ${e}`);
       this.onError(`[RTNPdfView]: fs accessSync: ${e}`);
     }
   }
 
-  async doLoadLocalDocument(filePath: string, isDelOriginFile: boolean = true): Promise<void> {
-    let initPageIndex: number = this.descriptor.rawProps.page ?? 1;
-    let spacing: number = this.descriptor.rawProps.spacing ?? 10;
-    let scale: number = this.descriptor.rawProps.scale ?? DEFAULT_SCALE;
-    if (scale > DEFAULT_MAX_SCALE) {
-      scale = DEFAULT_MAX_SCALE;
-    } else if (scale < DEFAULT_MIN_SCALE) {
-      scale = DEFAULT_MIN_SCALE;
-    }
-    let password: string = this.descriptor.rawProps.password ?? '';
-    let fitPolicy: number = this.descriptor.rawProps.fitPolicy ?? 2;
+  doLoadLocalDocument(filePath: string, isDelOriginFile: boolean = true): void {
+    let initPageIndex: number | undefined = this.descriptor.rawProps.page;
+    let spacing: number = Number(this.descriptor.rawProps.spacing);
+    let scale: number =  Number(this.descriptor.rawProps.scale);
+    let minScale: number | undefined = this.descriptor.rawProps.minScale;
+    let maxScale: number | undefined = this.descriptor.rawProps.maxScale;
+    let password: string | undefined = this.descriptor.rawProps.password;
+    let fitPolicy: number | undefined = this.descriptor.rawProps.fitPolicy;
+
     Logger.debug(`[RTNPdfView]: doLoadLocalDocument, filePath is ${filePath}, isDelOriginFile is ${isDelOriginFile}`);
     const progressCallBack: (progress: number) => number = (progress: number) => {
       Logger.debug(`[RTNPdfView]: proress is ${(progress / 100).toFixed(2)}`);
       this.loadProgress(Number((progress / 100).toFixed(2)));
       return 0;
     };
-    if (!filePath) {
-      Logger.error(`[RTNPdfView]: doLoadLocalDocument, filePath is null`);
-      return;
-    }
-    this.pdfController.releaseDocument();
-    try {
-      let result: pdfService.ParseResult = await this.pdfController.loadDocument(filePath, password, initPageIndex,
-        progressCallBack);
-      switch (result) {
-        case pdfService.ParseResult.PARSE_SUCCESS: {
-          //由于rn侧值传递一个参数，故此处默认为连续滚动模式。设置上下面的间距。
-          this.pdfController.setPageSpacing(spacing, spacing);
-          const pageCount: number = this.pdfController.getPageCount();
-          if (fitPolicy === 0) {
-            this.pdfController.setPageFit(pdfService.PageFit.FIT_WIDTH);
-          } else if (fitPolicy === 1) {
-            this.pdfController.setPageFit(pdfService.PageFit.FIT_HEIGHT);
-          } else {
-            this.pdfController.setPageFit(pdfService.PageFit.FIT_PAGE);
-          }
 
-          // 注册监听器
-          this.pdfController.registerScaleChangedListener((currentScale: number) => {
-            this.onScaleChanged(currentScale);
-          });
-          this.pdfController.registerPageChangedListener((pageIndex: number) => {
-            this.onPageChanged((pageIndex + 1), pageCount);
-          });
-          this.pdfController.registerActionClickListener((redirectInfo: pdfViewManager.RedirectInfo) => {
-            this.onPressLink(redirectInfo.content);
-          });
-          this.loadComplete(pageCount, filePath,);
-          this.pdfController.setPageZoom(scale);
-          Logger.debug(`[RTNPdfView]: loadDocument success`);
-          break;
-        }
-        case pdfService.ParseResult.PARSE_ERROR_FILE:
-          this.onError('loadDocument error: PARSE_ERROR_FILE');
-          break;
-        case pdfService.ParseResult.PARSE_ERROR_FORMAT:
-          this.onError('loadDocument error: PARSE_ERROR_FORMAT');
-          break;
-        case pdfService.ParseResult.PARSE_ERROR_PASSWORD:
-          this.onError('loadDocument error: PARSE_ERROR_PASSWORD');
-          break;
-        case pdfService.ParseResult.PARSE_ERROR_HANDLER:
-          this.onError('loadDocument error: PARSE_ERROR_HANDLER');
-          break;
-        case pdfService.ParseResult.PARSE_ERROR_CERT:
-          this.onError('loadDocument error: PARSE_ERROR_CERT');
-          break;
-        default:
-          this.onError('loadDocument error: UNKNOWN');
-          break;
-      }
-    } catch (e) {
-      Logger.error(`[RTNPdfView]: loadDocument error: ${e}`);
-      this.onError(e.message);
-    } finally {
-      Logger.debug(`[RTNPdfView]: isDelOriginFile is : ${isDelOriginFile}`);
-      if (isDelOriginFile) {
-        fs.unlink(filePath).then(() => {
-          Logger.debug(`[RTNPdfView]: originFile deleted`);
-        });
-      }
+    if (filePath) {
+      this.pdfController.releaseDocument();
+      this.pdfController.loadDocument(filePath, password, initPageIndex, progressCallBack)
+        .then((res: pdfService.ParseResult) => {
+          switch (res) {
+            case pdfService.ParseResult.PARSE_SUCCESS:
+              this.pdfController.setPageSpacing(spacing, spacing); //由于rn侧值传递一个参数，故此处默认为连续滚动模式。设置上下面的间距。
+              this.pdfController.setPageZoom(scale);
+              const pageCount: number = this.pdfController.getPageCount();
+              if (typeof fitPolicy === 'number') {
+                if (fitPolicy === 0) {
+                  this.pdfController.setPageFit(pdfService.PageFit.FIT_WIDTH);
+                } else if (fitPolicy === 1) {
+                  this.pdfController.setPageFit(pdfService.PageFit.FIT_HEIGHT);
+                } else if (fitPolicy === 2) {
+                  this.pdfController.setPageFit(pdfService.PageFit.FIT_PAGE);
+                }
+              }
+
+              // 注册监听器
+              let tempScale: number | undefined = scale;
+              this.pdfController.registerScaleChangedListener((currentScale: number) => {
+                if (tempScale !== currentScale) {
+                  if (typeof maxScale === 'number' && currentScale > maxScale) {
+                    this.pdfController.setPageZoom(maxScale);
+                  } else if (typeof minScale === 'number' && currentScale < minScale) {
+                    this.pdfController.setPageZoom(minScale);
+                  }
+                  tempScale = currentScale;
+                }
+                this.onScaleChanged(currentScale);
+              });
+              this.pdfController.registerPageChangedListener((pageIndex: number) => {
+                this.onPageChanged((pageIndex + 1), pageCount);
+              });
+              this.pdfController.registerActionClickListener((redirectInfo: pdfViewManager.RedirectInfo) => {
+                this.onPressLink(redirectInfo.content);
+              });
+              this.loadComplete(pageCount, filePath,);
+              Logger.debug(`[RTNPdfView]: loadDocument success`);
+              break;
+            case pdfService.ParseResult.PARSE_ERROR_FILE:
+              this.onError('loadDocument error: PARSE_ERROR_FILE');
+              break;
+            case pdfService.ParseResult.PARSE_ERROR_FORMAT:
+              this.onError('loadDocument error: PARSE_ERROR_FORMAT');
+              break;
+            case pdfService.ParseResult.PARSE_ERROR_PASSWORD:
+              this.onError('loadDocument error: PARSE_ERROR_PASSWORD');
+              break;
+            case pdfService.ParseResult.PARSE_ERROR_HANDLER:
+              this.onError('loadDocument error: PARSE_ERROR_HANDLER');
+              break;
+            case pdfService.ParseResult.PARSE_ERROR_CERT:
+              this.onError('loadDocument error: PARSE_ERROR_CERT');
+              break;
+            default:
+              this.onError('loadDocument error: UNKNOWN');
+              break;
+          }
+        })
+        .catch((e: Error) => {
+          Logger.error(`[RTNPdfView]: loadDocument error: ${e}`);
+          this.onError(e.message);
+        })
+        .finally(() => {
+          Logger.debug(`[RTNPdfView]: isDelOriginFile is : ${isDelOriginFile}`);
+          if (isDelOriginFile) {
+            fs.unlink(filePath).then(() => {
+              Logger.debug(`[RTNPdfView]: originFile deleted`);
+            })
+          }
+        })
     }
   }
 
@@ -403,7 +404,7 @@ export struct RTNPdfView {
   }
 
   onScaleChanged(currentScale: number) {
-    Logger.info('[RNOH]:enter scaleChanged', `scale: ${currentScale}`);
+    Logger.info("[RNOH]:enter scaleChanged");
     this.ctx.rnInstance.emitComponentEvent(
       this.descriptor.tag,
       PDF_VIEW_TYPE,
