@@ -77,6 +77,7 @@ export struct RTNPdfView {
   @State descriptor: PdfViewDescriptor = Object() as PdfViewDescriptor;
   @State pageIndex: number = 1;
   @State controllerStatus: boolean = false;
+  @State pdfUrl: string = "";
   private unregisterDescriptorChangesListener?: () => void = undefined;
   private cleanupCommandCallback?: () => void = undefined;
   private pdfController: pdfViewManager.PdfController = new pdfViewManager.PdfController();
@@ -90,7 +91,7 @@ export struct RTNPdfView {
     try {
       const filePath: string = await this.downloadHttpFile(path);
       Logger.debug(`[RTNPdfView]: doLoadHttpDocument, filePath is ${filePath}`);
-      this.doLoadLocalDocument(filePath);
+      this.doLoadLocalDocument(filePath, !this.descriptor.rawProps.source?.cache);
     } catch (e) {
       Logger.error(`[RTNPdfView]: fs accessSync: ${e}`);
       this.onError(`[RTNPdfView]: fs accessSync: ${e}`);
@@ -144,35 +145,35 @@ export struct RTNPdfView {
                   tempScale = currentScale;
                 }
                 this.onScaleChanged(currentScale);
-              });
-              this.pdfController.registerPageChangedListener((pageIndex: number) => {
-                this.onPageChanged((pageIndex + 1), pageCount);
-              });
-              this.pdfController.registerActionClickListener((redirectInfo: pdfViewManager.RedirectInfo) => {
-                this.onPressLink(redirectInfo.content);
-              });
-              this.loadComplete(pageCount, filePath,);
+          });
+          this.pdfController.registerPageChangedListener((pageIndex: number) => {
+            this.onPageChanged((pageIndex + 1), pageCount);
+          });
+          this.pdfController.registerActionClickListener((redirectInfo: pdfViewManager.RedirectInfo) => {
+            this.onPressLink(redirectInfo.content);
+          });
+          this.loadComplete(pageCount, filePath,);
               Logger.debug(`[RTNPdfView]: loadDocument success`);
               break;
             case pdfService.ParseResult.PARSE_ERROR_FILE:
-              this.onError('loadDocument error: PARSE_ERROR_FILE');
-              break;
-            case pdfService.ParseResult.PARSE_ERROR_FORMAT:
-              this.onError('loadDocument error: PARSE_ERROR_FORMAT');
-              break;
-            case pdfService.ParseResult.PARSE_ERROR_PASSWORD:
-              this.onError('loadDocument error: PARSE_ERROR_PASSWORD');
-              break;
-            case pdfService.ParseResult.PARSE_ERROR_HANDLER:
-              this.onError('loadDocument error: PARSE_ERROR_HANDLER');
-              break;
-            case pdfService.ParseResult.PARSE_ERROR_CERT:
-              this.onError('loadDocument error: PARSE_ERROR_CERT');
-              break;
-            default:
-              this.onError('loadDocument error: UNKNOWN');
-              break;
-          }
+          this.onError('loadDocument error: PARSE_ERROR_FILE');
+          break;
+        case pdfService.ParseResult.PARSE_ERROR_FORMAT:
+          this.onError('loadDocument error: PARSE_ERROR_FORMAT');
+          break;
+        case pdfService.ParseResult.PARSE_ERROR_PASSWORD:
+          this.onError('loadDocument error: PARSE_ERROR_PASSWORD');
+          break;
+        case pdfService.ParseResult.PARSE_ERROR_HANDLER:
+          this.onError('loadDocument error: PARSE_ERROR_HANDLER');
+          break;
+        case pdfService.ParseResult.PARSE_ERROR_CERT:
+          this.onError('loadDocument error: PARSE_ERROR_CERT');
+          break;
+        default:
+          this.onError('loadDocument error: UNKNOWN');
+          break;
+      }
         })
         .catch((e: Error) => {
           Logger.error(`[RTNPdfView]: loadDocument error: ${e}`);
@@ -192,12 +193,18 @@ export struct RTNPdfView {
   async downloadHttpFile(url: string): Promise<string> {
     let context = getContext(this) as common.UIAbilityContext;
     let filesDir = context.filesDir;
+    let res: string = "";
     const hashFileName: string = await this.processFileName(url);
-    const fullFileName: string = filesDir + "/" + hashFileName + '.pdf';
-    if (fs.accessSync(fullFileName)) {
-      fs.unlinkSync(fullFileName);
+    const cacheFileName = await this.checkCache(hashFileName);
+    if(this.descriptor.rawProps.source?.cache && !!cacheFileName){
+      res = cacheFileName;
+    }else{
+      if (!!cacheFileName && fs.accessSync(cacheFileName)) {
+        fs.unlinkSync(cacheFileName);
+      }
+      const fullFileName: string = filesDir + "/" + hashFileName + new Date().getTime() + '.pdf';
+      res = await this.downloadAction(context, url, fullFileName, {}, 0);
     }
-    const res = await this.downloadAction(context, url, fullFileName, {}, 0);
     Logger.info(`[RTNPdfView]:res: ${res}`);
     return res;
   }
@@ -273,7 +280,7 @@ export struct RTNPdfView {
       try {
         await md.update({ data: new Uint8Array(buffer.from(originalURL, 'utf-8').buffer) });
         let mdResult: cryptoFramework.DataBlob = await md.digest();
-        const fileName: string = buffer.from(mdResult.data).toString('hex') + new Date().getTime();
+        const fileName: string = buffer.from(mdResult.data).toString('hex');
         Logger.info(`[RTNPdfView]: fileName: ${fileName}`);
         resolve(fileName);
       } catch (e) {
@@ -282,23 +289,48 @@ export struct RTNPdfView {
       }
     });
   }
+  async checkCache(hashFileName: string): Promise<string> {
+    try {
+      let filesDir = (getContext() as common.UIAbilityContext).filesDir;
+      let cacheFileName: string = "";
+      let fileList = fs.listFileSync(filesDir);
+      fileList.forEach(file=>{
+        let _hashFileName = file.slice(0, -17);
+        _hashFileName === hashFileName && (cacheFileName = filesDir + "/" + file);
+      })
+      return Promise.resolve(cacheFileName);
+    } catch (e) {
+      this.onError(e.message);
+      return Promise.reject("checkCache error");
+    }
+  }
 
   async sendToSandBox(assetPath: string): Promise<string> {
     assetPath = assetPath!.replace("asset://", "assets/");
     Logger.info(`[RTNPdfView]: load pdf assetPath: ${assetPath}`);
-    const newFileName: string = await this.processFileName(assetPath);
+    const hashFileName: string = await this.processFileName(assetPath);
+    const cacheFileName = await this.checkCache(hashFileName);
+    let fileFullPath: string = "";
 
-    // 需将pdf文档复制到沙箱路径下
-    let context = getContext() as common.UIAbilityContext;
-    let content = context.resourceManager.getRawFileContentSync(`${assetPath}`); // pdf_reference
-    let dir = context.filesDir;
-    let fileFullPath = dir + '/' + newFileName + '.pdf';
-    Logger.info(`[RTNPdfView]: load pdf filePath: ${fileFullPath}`);
-    let res = fs.accessSync(fileFullPath);
-    Logger.info(`[RTNPdfView]: fs accessSync: ${res}`);
-    let fdSand = fs.openSync(fileFullPath, fs.OpenMode.WRITE_ONLY | fs.OpenMode.CREATE | fs.OpenMode.TRUNC);
-    fs.writeSync(fdSand.fd, content.buffer);
-    fs.closeSync(fdSand.fd);
+    if(this.descriptor.rawProps.source?.cache && !!cacheFileName){
+      fileFullPath = cacheFileName;
+    }else{
+      if (!!cacheFileName && fs.accessSync(cacheFileName)) {
+        fs.unlinkSync(cacheFileName);
+      }
+      // 需将pdf文档复制到沙箱路径下
+      let context = getContext() as common.UIAbilityContext;
+      let content = context.resourceManager.getRawFileContentSync(`${assetPath}`); // pdf_reference
+      let dir = context.filesDir;
+      fileFullPath = dir + '/' + hashFileName + new Date().getTime() + '.pdf';
+      Logger.info(`[RTNPdfView]: load pdf filePath: ${fileFullPath}`);
+      let res = fs.accessSync(fileFullPath);
+      Logger.info(`[RTNPdfView]: fs accessSync: ${res}`);
+      let fdSand = fs.openSync(fileFullPath, fs.OpenMode.WRITE_ONLY | fs.OpenMode.CREATE | fs.OpenMode.TRUNC);
+      fs.writeSync(fdSand.fd, content.buffer);
+      fs.closeSync(fdSand.fd);
+    }
+
     return fileFullPath;
   }
 
@@ -306,6 +338,7 @@ export struct RTNPdfView {
     let src: string | undefined = this.descriptor.rawProps.path;
     Logger.info(`[RTNPdfView]: src is ${src}`);
     if (src) {
+      this.pdfUrl = src;
       if (src!.startsWith('http://') || src!.startsWith('https://')) {
         this.doLoadHttpDocument(src); // 适配加载在线文件
       } else {
@@ -325,7 +358,7 @@ export struct RTNPdfView {
     this.unregisterDescriptorChangesListener = this.ctx.descriptorRegistry.subscribeToDescriptorChanges(this.tag,
       (newDescriptor) => {
         this.descriptor = (newDescriptor as PdfViewDescriptor)
-        this.updateSource();
+        this.descriptor.rawProps.path !== this.pdfUrl && this.updateSource();
       }
     )
     this.cleanupCommandCallback = this.ctx.componentCommandReceiver.registerCommandCallback(
@@ -333,6 +366,7 @@ export struct RTNPdfView {
       (command, args: (boolean | number)[]) => {
         Logger.info(`[RNOH]: HarmonyOS does not support,command:  ${command}, arg: ${args[0]}`);
         this.pageIndex = args[0] as number;
+        this.pdfUrl = "";
       });
   }
 
