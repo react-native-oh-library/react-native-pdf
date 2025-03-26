@@ -359,7 +359,7 @@ export struct RTNPdfView {
     this.unregisterDescriptorChangesListener = this.ctx.descriptorRegistry.subscribeToDescriptorChanges(this.tag,
       (newDescriptor) => {
         this.descriptor = (newDescriptor as PdfViewDescriptor)
-        this.descriptor.rawProps.path !== this.pdfUrl && this.updateSource();
+        this.updateSource();
       }
     )
     this.cleanupCommandCallback = this.ctx.componentCommandReceiver.registerCommandCallback(
