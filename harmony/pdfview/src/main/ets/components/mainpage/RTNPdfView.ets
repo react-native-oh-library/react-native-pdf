@@ -116,7 +116,8 @@ export struct RTNPdfView {
 
     if (filePath) {
       this.pdfController.releaseDocument();
-      this.pdfController.loadDocument(filePath, password, initPageIndex, progressCallBack)
+      const initPage = initPageIndex ? Math.max(initPageIndex - 1, 0) : 0
+      this.pdfController.loadDocument(filePath, password, initPage, progressCallBack)
         .then((res: pdfService.ParseResult) => {
           switch (res) {
             case pdfService.ParseResult.PARSE_SUCCESS:
