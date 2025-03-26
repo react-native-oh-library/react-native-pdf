@@ -106,6 +106,8 @@ export struct RTNPdfView {
     let maxScale: number | undefined = this.descriptor.rawProps.maxScale;
     let password: string | undefined = this.descriptor.rawProps.password;
     let fitPolicy: number | undefined = this.descriptor.rawProps.fitPolicy;
+    // pdfView 初始 scale
+    let systemInitScale = 0;
 
     Logger.debug(`[RTNPdfView]: doLoadLocalDocument, filePath is ${filePath}, isDelOriginFile is ${isDelOriginFile}`);
     const progressCallBack: (progress: number) => number = (progress: number) => {
@@ -141,7 +143,14 @@ export struct RTNPdfView {
                   if (typeof maxScale === 'number' && currentScale > maxScale) {
                     this.pdfController.setPageZoom(maxScale);
                   } else if (typeof minScale === 'number' && currentScale < minScale) {
-                    this.pdfController.setPageZoom(minScale);
+                    // 问题：当minScale为1时,其他平台不缩放，但鸿蒙pdfView的初始scale小于1，在这里会强制赋值为1，这样就会放大产生滚动，引起和其他平台不一致的效果
+                    // 解决：systemInitScale为0时，currentScale表示pdfView初始scale，若小于minScale，则赋值给minScale，这样就不会强制赋值为1而产生缩放
+                    if (!systemInitScale && minScale === 1) {
+                      systemInitScale = currentScale
+                      minScale = systemInitScale;
+                    } else {
+                      this.pdfController.setPageZoom(minScale);
+                    }
                   }
                   tempScale = currentScale;
                 }
@@ -470,7 +479,8 @@ export struct RTNPdfView {
             controller: this.pdfController,
             pageLayout: pdfService.PageLayout.LAYOUT_SINGLE,
             isContinuous: true,
-            pageFit: pdfService.PageFit.FIT_WIDTH
+            pageFit: pdfService.PageFit.FIT_WIDTH,
+            showScroll: false
           }
         )
       }
