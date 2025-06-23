@@ -433,7 +433,7 @@ export default class Pdf extends Component {
             console.log("===react-native-pdf style: " + JSON.stringify(this.props.style));
             return (
             <View style={[{ overflow: 'hidden' }, this.props.style]}>
-                <RNPDFPdfView {...this.props} path={this.state.path} onChange={this._onChange}  />
+                <RNPDFPdfView key={this.state.path} {...this.props} path={this.state.path} onChange={this._onChange}  />
             </View>
             );
         } else {
