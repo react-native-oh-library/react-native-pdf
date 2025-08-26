@@ -396,11 +396,15 @@ export struct RTNPdfView {
     if (typeof pageNumber !== 'number' || isNaN(pageNumber)) {
       Logger.error(`[RTNPdfView]: Specified pageNumber is not a number`);
     }
-    const validPageNumber = Math.max(1, Math.min(pageNumber, this.totalPages));
-    const pageIndex = validPageNumber - 1;
-    Logger.info(`[RTNPdfView]: setPage to ${pageIndex}, total pages: ${this.totalPages}`);
-    if (this.pdfController && this.totalPages > 0) {
-      this.pdfController.goToPage(pageIndex);
+    const validPageNumber = pageNumber > 1 ? pageNumber : 1;
+    if (validPageNumber > this.totalPages) {
+      return
+    } else {
+      const pageIndex = validPageNumber - 1;
+      Logger.info(`[RTNPdfView]: setPage to ${pageIndex}, total pages: ${this.totalPages}`);
+      if (this.pdfController && this.totalPages > 0) {
+        this.pdfController.goToPage(pageIndex);
+      }
     }
   }
 
