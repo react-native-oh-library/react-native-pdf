@@ -81,6 +81,7 @@ export struct RTNPdfView {
   private unregisterDescriptorChangesListener?: () => void = undefined;
   private cleanupCommandCallback?: () => void = undefined;
   private pdfController: pdfViewManager.PdfController = new pdfViewManager.PdfController();
+  private totalPages: number = 0;
 
   @Builder
   emptyBuild(ctx: ComponentBuilderContext) {
@@ -374,9 +375,15 @@ export struct RTNPdfView {
     this.cleanupCommandCallback = this.ctx.componentCommandReceiver.registerCommandCallback(
       this.tag,
       (command, args: (boolean | number)[]) => {
-        Logger.info(`[RNOH]: HarmonyOS does not support,command:  ${command}, arg: ${args[0]}`);
-        this.pageIndex = args[0] as number;
-        this.pdfUrl = "";
+        Logger.info(`[RNOH]: Received command: ${command}, arg: ${args[0]}`);
+        if (command === 'setNativePage' && args.length > 0) {
+          const pageNumber = args[0] as number;
+          this.setPage(pageNumber);
+        } else {
+          Logger.info(`[RNOH]: HarmonyOS does not support,command:  ${command}, arg: ${args[0]}`);
+          this.pageIndex = args[0] as number;
+          this.pdfUrl = "";
+        }
       });
   }
 
@@ -385,9 +392,21 @@ export struct RTNPdfView {
     this.unregisterDescriptorChangesListener?.();
   }
 
+  setPage(pageNumber: number) {
+    if (typeof pageNumber !== 'number' || isNaN(pageNumber)) {
+      Logger.error(`[RTNPdfView]: Specified pageNumber is not a number`);
+    }
+    const validPageNumber = Math.max(1, Math.min(pageNumber, this.totalPages));
+    const pageIndex = validPageNumber - 1;
+    Logger.info(`[RTNPdfView]: setPage to ${pageIndex}, total pages: ${this.totalPages}`);
+    if (this.pdfController && this.totalPages > 0) {
+      this.pdfController.goToPage(pageIndex);
+    }
+  }
+
   loadComplete(numberOfPages: number, filePath: string) {
     Logger.info("[RNOH]:enter loadComplete");
-
+    this.totalPages = numberOfPages;
     // 获取页面宽度、高度
     this.ctx.rnInstance.emitComponentEvent(
       this.descriptor.tag,
