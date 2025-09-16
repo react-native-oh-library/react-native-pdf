@@ -327,7 +327,14 @@ export default class Pdf extends Component {
         if ((pageNumber === null) || (isNaN(pageNumber))) {
             throw new Error('Specified pageNumber is not a number');
         }
-        if (!!global?.nativeFabricUIManager) {
+        if (Platform.OS === 'harmony') {
+            if (this._root) {
+                RNPDFCommands.setNativePage(
+                    this._root,
+                    pageNumber,
+                );
+            }
+        } else if (!!global?.nativeFabricUIManager) {
             if (this._root) {
                 PdfViewCommands.setNativePage(
                     this._root,
@@ -433,7 +440,12 @@ export default class Pdf extends Component {
             console.log("===react-native-pdf style: " + JSON.stringify(this.props.style));
             return (
             <View style={[{ overflow: 'hidden' }, this.props.style]}>
-                <RNPDFPdfView {...this.props} path={this.state.path} onChange={this._onChange}  />
+              <RNPDFPdfView
+                ref={component => (this._root = component)}
+                {...this.props}
+                path={this.state.path}
+                onChange={this._onChange}
+              />
             </View>
             );
         } else {
