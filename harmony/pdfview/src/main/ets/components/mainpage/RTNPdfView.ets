@@ -125,7 +125,9 @@ export struct RTNPdfView {
           switch (res) {
             case pdfService.ParseResult.PARSE_SUCCESS:
               this.pdfController.setPageSpacing(spacing, spacing); //由于rn侧值传递一个参数，故此处默认为连续滚动模式。设置上下面的间距。
-              this.pdfController.setPageZoom(scale);
+              if(scale!==1){
+                     this.pdfController.setPageZoom(scale);
+              }
               const pageCount: number = this.pdfController.getPageCount();
               if (typeof fitPolicy === 'number') {
                 if (fitPolicy === 0) {
