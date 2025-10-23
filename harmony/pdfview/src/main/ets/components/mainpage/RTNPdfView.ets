@@ -398,8 +398,11 @@ export struct RTNPdfView {
     if (typeof pageNumber !== 'number' || isNaN(pageNumber)) {
       Logger.error(`[RTNPdfView]: Specified pageNumber is not a number`);
     }
-    const validPageNumber = Math.max(1, Math.min(pageNumber, this.totalPages));
-    const pageIndex = validPageNumber - 1;
+    if (pageNumber < 1 || pageNumber > this.totalPages) {
+      Logger.info(`[RTNPdfView]: setPage ignored: ${pageNumber} out of range 1..${this.totalPages}`);
+      return;
+    }
+    const pageIndex = pageNumber - 1;
     Logger.info(`[RTNPdfView]: setPage to ${pageIndex}, total pages: ${this.totalPages}`);
     if (this.pdfController && this.totalPages > 0) {
       this.pdfController.goToPage(pageIndex);
