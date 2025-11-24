@@ -390,6 +390,7 @@ export struct RTNPdfView {
   }
 
   aboutToDisappear() {
+    this.pdfController.releaseDocument();
     this.cleanupCommandCallback?.();
     this.unregisterDescriptorChangesListener?.();
   }
